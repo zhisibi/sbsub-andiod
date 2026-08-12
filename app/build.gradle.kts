@@ -1,5 +1,6 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
+// App-level build config updated
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
