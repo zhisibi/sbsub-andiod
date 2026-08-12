@@ -1,6 +1,8 @@
 package com.example
 
-// SingBox Sub Main Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,19 +10,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -31,12 +41,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
 import com.example.ui.screens.ConfigScreen
@@ -44,6 +57,7 @@ import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.NodesScreen
 import com.example.ui.screens.SubscriptionsScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.util.CrashHandler
 
 class MainActivity : ComponentActivity() {
 
@@ -51,6 +65,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashHandler.init(applicationContext)
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -70,6 +85,43 @@ sealed class NavigationTab(val route: String, val title: String, val icon: Image
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(viewModel: MainViewModel) {
+    val context = LocalContext.current
+    var crashLog by remember { mutableStateOf(CrashHandler.getCrashLog(context)) }
+
+    if (crashLog != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("App Crashed (闪退日志)") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(text = crashLog ?: "", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("Crash Log", crashLog)
+                    clipboard.setPrimaryClip(clip)
+                }) {
+                    Text("Copy Log")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    CrashHandler.clearCrashLog(context)
+                    crashLog = null
+                }) {
+                    Text("Clear & Close")
+                }
+            }
+        )
+    }
+
     val tabs = listOf(
         NavigationTab.Server,
         NavigationTab.Subscriptions,
